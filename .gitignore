@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+*.session
+node_modules/
+.next/
+.pytest_cache/
+.ruff_cache/
+*.db
+.claude/worktrees/
