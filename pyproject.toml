@@ -1,0 +1,36 @@
+[project]
+name = "le-fil"
+version = "0.1.0"
+description = "Le Fil — base de connaissances des liens partagés sur Telegram, résumés par Codex"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "sqlalchemy>=2.0",
+    "alembic>=1.14",
+    "psycopg[binary]>=3.2",
+    "pydantic-settings>=2.6",
+    "httpx>=0.28",
+    "telethon>=1.36",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.8",
+    "pytest>=8.3",
+]
+
+[tool.uv]
+default-groups = []
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# B008 : `Depends(...)`/`Query(...)` en valeur par défaut est l'idiome FastAPI.
+extend-ignore = ["B008"]

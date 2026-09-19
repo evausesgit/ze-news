@@ -1,0 +1,86 @@
+# Le Fil — déploiement Coolify (compose). Variables à définir dans Coolify :
+#   DB_PASSWORD              mot de passe PostgreSQL
+#   INTERNAL_API_TOKEN       jeton partagé proxy Next ↔ API (chaîne aléatoire longue)
+#   TELEGRAM_API_ID / TELEGRAM_API_HASH / TELEGRAM_SESSION   (worker uniquement)
+#   NEXT_PUBLIC_FIREBASE_API_KEY / _AUTH_DOMAIN / _PROJECT_ID / _APP_ID
+#   LEFIL_ALLOWED_EMAILS     (optionnel) liste blanche d'emails Google
+#   CODEX_HOME_HOST          dossier hôte de l'auth codex (défaut /home/geekette/.codex)
+#
+# Seul `web` est exposé (domaine Coolify, port 3000). `api` et `db` restent sur
+# le réseau interne du compose.
+
+services:
+  api:
+    build: .
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://lefil:${DB_PASSWORD}@db:5432/lefil
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
+    expose:
+      - "8810"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8810/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    build: .
+    restart: unless-stopped
+    command: ["python", "-m", "app.worker"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://lefil:${DB_PASSWORD}@db:5432/lefil
+      TELEGRAM_API_ID: ${TELEGRAM_API_ID}
+      TELEGRAM_API_HASH: ${TELEGRAM_API_HASH}
+      TELEGRAM_SESSION: ${TELEGRAM_SESSION}
+      POLL_INTERVAL_SECONDS: ${POLL_INTERVAL_SECONDS:-600}
+      ENRICH_BATCH_SIZE: ${ENRICH_BATCH_SIZE:-20}
+      CODEX_MODEL: ${CODEX_MODEL:-gpt-5.6-luna}
+      CODEX_REASONING: ${CODEX_REASONING:-low}
+    volumes:
+      - type: bind
+        source: ${CODEX_HOME_HOST:-/home/geekette/.codex}
+        target: /home/app/.codex
+    depends_on:
+      api:
+        condition: service_healthy  # l'API a joué les migrations
+
+  web:
+    build:
+      context: ./web
+      args:
+        API_INTERNAL_URL: http://api:8810
+        NEXT_PUBLIC_FIREBASE_API_KEY: ${NEXT_PUBLIC_FIREBASE_API_KEY}
+        NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID}
+        NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
+    restart: unless-stopped
+    environment:
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
+      LEFIL_ALLOWED_EMAILS: ${LEFIL_ALLOWED_EMAILS:-}
+    expose:
+      - "3000"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: lefil
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: lefil
+    volumes:
+      - lefil-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lefil"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  lefil-db:

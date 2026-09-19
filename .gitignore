@@ -9,3 +9,4 @@ node_modules/
 .ruff_cache/
 *.db
 .claude/worktrees/
+web/tsconfig.tsbuildinfo
