@@ -2,11 +2,25 @@
 
 from __future__ import annotations
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def _empty_means_default(cls, value, info):
+        """Une variable présente mais VIDE vaut « non renseignée ».
+
+        Coolify — comme un .env à trous — pose les variables pas encore
+        remplies comme chaînes vides. Sans ça, `TELEGRAM_API_ID=` fait planter
+        toute l'application au démarrage sur un champ entier.
+        """
+        if value == "" and info.field_name in cls.model_fields:
+            return cls.model_fields[info.field_name].default
+        return value
 
     database_url: str = "sqlite:///./zenews.db"
 
