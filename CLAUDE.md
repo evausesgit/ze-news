@@ -6,6 +6,8 @@ endpoints) ; le garder synchronisé avec le code. Langue du projet : français.
 
 ## Commandes
 
+- Pile locale complète : `bash scripts/dev_up.sh [--demo|--telegram]`,
+  arrêt `bash scripts/dev_down.sh` (front :3010, API :8810, Postgres jetable).
 - Tests : `uv run --group dev pytest -q` · Lint : `uv run --group dev ruff check`
 - Front : `cd web && npx tsc --noEmit && npx next build`
 - Migrations : `uv run alembic revision --autogenerate -m "…"` puis `alembic upgrade head`
@@ -18,6 +20,11 @@ endpoints) ; le garder synchronisé avec le code. Langue du projet : français.
   Effort et modèle toujours passés explicitement.
 - Piège PATH : codex est dans `~/.npm-global/bin`, absent du PATH des process
   lancés par un agent → `CODEX_BIN` en chemin absolu.
+- Piège cache Turbopack : après un renommage ou une grosse modification,
+  `next dev` peut servir un mélange d'anciens et de nouveaux modules — les
+  gestionnaires d'événements ne se déclenchent plus alors que le code est bon
+  (symptôme observé : le swipe ne répond plus, les boutons si). Remède :
+  `rm -rf web/.next` puis relancer. Vérifier cela AVANT de soupçonner le deck.
 - Multi-utilisateur : toute requête sur les liens passe par les fils de
   l'utilisateur (`feed_members`). Ne jamais renvoyer un lien hors de ses fils.
 - État de lecture = `link_states` (par utilisateur), jamais sur `links`.

@@ -56,6 +56,18 @@ moins le service `worker` sur une machine dont tu es seule administratrice.
 
 ## Développement
 
+Tout tester en local en une commande (Postgres jetable, API, front avec une
+identité simulée) :
+
+```bash
+bash scripts/dev_up.sh --demo   # --demo = 6 liens réels résumés par Codex
+# → http://127.0.0.1:3010
+bash scripts/dev_down.sh        # tout arrêter (la base est supprimée)
+```
+
+Avec ton vrai Telegram configuré (cf. § Mise en route) :
+`bash scripts/dev_up.sh --telegram` lance en plus un cycle d'ingestion.
+
 ```bash
 uv sync --group dev
 uv run --group dev pytest -q          # tests
