@@ -28,7 +28,7 @@ MAX_TEXT_CHARS = 6000
 MAX_BYTES = 3_000_000
 _UA = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/128.0 Safari/537.36 LeFil/0.1"
+    "Chrome/128.0 Safari/537.36 ZeNews/0.1"
 )
 
 

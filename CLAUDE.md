@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Le Fil : liens partagés sur Telegram → résumés par Codex → cartes swipables et
+Ze News : liens partagés sur Telegram → résumés par Codex → cartes swipables et
 recherche, multi-utilisateur. **`ARCHITECTURE.md` fait foi** (schéma, pipeline,
 endpoints) ; le garder synchronisé avec le code. Langue du projet : français.
 

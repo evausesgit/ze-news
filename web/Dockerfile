@@ -1,4 +1,4 @@
-# Front Le Fil (Next 16).
+# Front Ze News (Next 16).
 # ⚠️ API_INTERNAL_URL et NEXT_PUBLIC_FIREBASE_* sont figés AU BUILD (rewrites
 # Next et variables publiques inlinées) : ce sont des build-args.
 

@@ -1,9 +1,9 @@
-# Le Fil — déploiement Coolify (compose). Variables à définir dans Coolify :
+# Ze News — déploiement Coolify (compose). Variables à définir dans Coolify :
 #   DB_PASSWORD              mot de passe PostgreSQL
 #   INTERNAL_API_TOKEN       jeton partagé proxy Next ↔ API (chaîne aléatoire longue)
 #   TELEGRAM_API_ID / TELEGRAM_API_HASH / TELEGRAM_SESSION   (worker uniquement)
 #   NEXT_PUBLIC_FIREBASE_API_KEY / _AUTH_DOMAIN / _PROJECT_ID / _APP_ID
-#   LEFIL_ALLOWED_EMAILS     (optionnel) liste blanche d'emails Google
+#   ZENEWS_ALLOWED_EMAILS     (optionnel) liste blanche d'emails Google
 #   CODEX_HOME_HOST          dossier hôte de l'auth codex (défaut /home/geekette/.codex)
 #
 # Seul `web` est exposé (domaine Coolify, port 3000). `api` et `db` restent sur
@@ -14,7 +14,7 @@ services:
     build: .
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+psycopg://lefil:${DB_PASSWORD}@db:5432/lefil
+      DATABASE_URL: postgresql+psycopg://zenews:${DB_PASSWORD}@db:5432/zenews
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
     expose:
       - "8810"
@@ -32,7 +32,7 @@ services:
     restart: unless-stopped
     command: ["python", "-m", "app.worker"]
     environment:
-      DATABASE_URL: postgresql+psycopg://lefil:${DB_PASSWORD}@db:5432/lefil
+      DATABASE_URL: postgresql+psycopg://zenews:${DB_PASSWORD}@db:5432/zenews
       TELEGRAM_API_ID: ${TELEGRAM_API_ID}
       TELEGRAM_API_HASH: ${TELEGRAM_API_HASH}
       TELEGRAM_SESSION: ${TELEGRAM_SESSION}
@@ -60,7 +60,7 @@ services:
     restart: unless-stopped
     environment:
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN}
-      LEFIL_ALLOWED_EMAILS: ${LEFIL_ALLOWED_EMAILS:-}
+      ZENEWS_ALLOWED_EMAILS: ${ZENEWS_ALLOWED_EMAILS:-}
     expose:
       - "3000"
     depends_on:
@@ -71,16 +71,16 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: lefil
+      POSTGRES_USER: zenews
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: lefil
+      POSTGRES_DB: zenews
     volumes:
-      - lefil-db:/var/lib/postgresql/data
+      - zenews-db:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U lefil"]
+      test: ["CMD-SHELL", "pg_isready -U zenews"]
       interval: 5s
       timeout: 3s
       retries: 10
 
 volumes:
-  lefil-db:
+  zenews-db:

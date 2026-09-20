@@ -16,7 +16,7 @@ export default function Nav() {
     <nav className="nav">
       <Link href="/" className="brand">
         <span className="brand-dot" aria-hidden="true" />
-        <span className="brand-text">Le Fil</span>
+        <span className="brand-text">Ze News</span>
       </Link>
       <div className="nav-links">
         <Link href="/" aria-current={path === "/" ? "page" : undefined}>

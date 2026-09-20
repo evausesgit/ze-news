@@ -8,7 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    database_url: str = "sqlite:///./lefil.db"
+    database_url: str = "sqlite:///./zenews.db"
 
     # Jeton partagé entre le proxy Next et l'API. S'il est défini, toute requête
     # qui ne le porte pas est refusée : l'API ne fait confiance aux en-têtes

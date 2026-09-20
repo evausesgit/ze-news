@@ -1,7 +1,7 @@
 "use client";
 
 // Maintient le cookie de session à jour (renouvellement du jeton Firebase) et
-// expose la déconnexion. En dev avec LEFIL_DEV_USER_EMAIL, Firebase n'est pas
+// expose la déconnexion. En dev avec ZENEWS_DEV_USER_EMAIL, Firebase n'est pas
 // configuré : on ne l'initialise pas.
 import { createContext, useCallback, useContext, useEffect, type ReactNode } from "react";
 import { onIdTokenChanged, signOut } from "firebase/auth";

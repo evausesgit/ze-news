@@ -11,7 +11,7 @@ const INTERNAL_TOKEN = process.env.INTERNAL_API_TOKEN ?? "";
 
 // Dev local uniquement : identité simulée, jamais active en production.
 const DEV_USER_EMAIL =
-  process.env.NODE_ENV !== "production" ? (process.env.LEFIL_DEV_USER_EMAIL ?? "") : "";
+  process.env.NODE_ENV !== "production" ? (process.env.ZENEWS_DEV_USER_EMAIL ?? "") : "";
 
 const JWKS = createRemoteJWKSet(
   new URL(
@@ -20,7 +20,7 @@ const JWKS = createRemoteJWKSet(
 );
 
 // Liste blanche optionnelle d'emails Google (séparés par des virgules).
-const ALLOWED_EMAILS = (process.env.LEFIL_ALLOWED_EMAILS ?? "")
+const ALLOWED_EMAILS = (process.env.ZENEWS_ALLOWED_EMAILS ?? "")
   .split(",")
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);

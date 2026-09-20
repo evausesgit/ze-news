@@ -18,7 +18,7 @@ export function getFirebaseAuth(): Auth {
 }
 
 // Cookie lu par proxy.ts. 55 min < validité du jeton (60 min).
-export const SESSION_COOKIE = "lefil_session";
+export const SESSION_COOKIE = "zenews_session";
 
 export function setSessionCookie(token: string | null) {
   if (typeof document === "undefined") return;

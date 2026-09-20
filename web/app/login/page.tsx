@@ -105,7 +105,7 @@ export default function LoginPage() {
       <div className="login-card">
         <div className="brand big">
           <span className="brand-dot" aria-hidden="true" />
-          Le Fil
+          Ze News
         </div>
         <Suspense fallback={<p className="login-sub">Vérification de la session…</p>}>
           <LoginInner />

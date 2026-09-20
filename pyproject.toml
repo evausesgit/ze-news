@@ -1,7 +1,7 @@
 [project]
-name = "le-fil"
+name = "ze-news"
 version = "0.1.0"
-description = "Le Fil — base de connaissances des liens partagés sur Telegram, résumés par Codex"
+description = "Ze News — base de connaissances des liens partagés sur Telegram, résumés par Codex"
 requires-python = ">=3.12,<3.14"
 dependencies = [
     "fastapi>=0.115",

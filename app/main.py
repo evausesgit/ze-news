@@ -9,7 +9,7 @@ from app.api import links, me
 logging.basicConfig(level=logging.INFO)
 
 # Le schéma est géré par Alembic (`alembic upgrade head` au démarrage du conteneur).
-app = FastAPI(title="Le Fil")
+app = FastAPI(title="Ze News")
 app.include_router(me.router)
 app.include_router(links.router)
 

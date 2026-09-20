@@ -18,7 +18,7 @@ from app.db import SessionLocal
 from app.enrich import enrich_pending
 from app.telegram_ingest import ingest_all
 
-log = logging.getLogger("lefil.worker")
+log = logging.getLogger("zenews.worker")
 
 
 def run_cycle() -> None:

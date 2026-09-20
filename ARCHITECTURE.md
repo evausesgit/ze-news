@@ -1,4 +1,4 @@
-# Le Fil — architecture
+# Ze News — architecture
 
 Les liens partagés dans une conversation Telegram (au départ : Yoann → Eva)
 deviennent une base de connaissances : chaque lien est lu, résumé en une phrase
@@ -82,7 +82,7 @@ STATS, SCIENCE, HEALTH, CULTURE, OTHER.
 - L'identité vient **uniquement** du proxy Next, qui vérifie le jeton Firebase
   et écrase les en-têtes `x-user-*`. L'API exige en plus `x-internal-token`
   (= `INTERNAL_API_TOKEN`) : un appel direct est refusé.
-- `LEFIL_ALLOWED_EMAILS` restreint l'accès à une liste de comptes Google.
+- `ZENEWS_ALLOWED_EMAILS` restreint l'accès à une liste de comptes Google.
 - `TELEGRAM_SESSION` donne un **accès complet au compte Telegram** (toutes les
   conversations). Voir « Où héberger le worker » dans le README.
 - Le contenu des pages est une donnée non fiable : le prompt le balise comme

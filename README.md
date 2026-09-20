@@ -1,4 +1,4 @@
-# Le Fil
+# Ze News
 
 Les liens que Yoann partage sur Telegram, résumés en une phrase par Codex,
 classés par label et thème, à lire en cartes swipables. Détails techniques :
@@ -65,5 +65,5 @@ DATABASE_URL=… uv run python -m scripts.demo_seed moi@example.com  # base de d
 
 # front, identité simulée (dev uniquement, ignorée en production)
 cd web && npm install
-LEFIL_DEV_USER_EMAIL=moi@example.com API_INTERNAL_URL=http://127.0.0.1:8810 npm run dev
+ZENEWS_DEV_USER_EMAIL=moi@example.com API_INTERNAL_URL=http://127.0.0.1:8810 npm run dev
 ```

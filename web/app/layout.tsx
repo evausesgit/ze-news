@@ -8,7 +8,7 @@ import { PrefsProvider } from "@/lib/prefs";
 const inter = Inter({ subsets: ["latin"], variable: "--ff-sans", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "Le Fil",
+  title: "Ze News",
   description: "Les liens partagés sur Telegram, résumés et rangés.",
 };
 
