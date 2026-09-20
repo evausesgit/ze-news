@@ -1,7 +1,7 @@
 """Connexion Telegram interactive → écrit TELEGRAM_SESSION dans .env (chmod 600).
 
-    uv run python -m scripts.telegram_login          # code dans l'app Telegram
-    uv run python -m scripts.telegram_login --sms    # code par SMS
+    uv run python -m scripts.telegram_login        # par code reçu sur le compte
+    uv run python -m scripts.telegram_login --qr   # par QR code, sans code ni SMS
 
 Demande l'api_id / api_hash (https://my.telegram.org → « API development
 tools »), puis le numéro de téléphone, le code reçu dans Telegram et, le cas
@@ -111,6 +111,36 @@ def sign_in(client, phone: str) -> None:
     raise SystemExit("Trois codes invalides : relance le script.")
 
 
+def qr_login(client) -> None:
+    """Connexion par QR code, comme Telegram Desktop — sans code ni SMS.
+
+    Sur le téléphone : Telegram → Réglages → Appareils → « Lier un ordinateur »,
+    puis scanner. Le QR expire au bout d'une minute et est régénéré ici.
+    """
+    import qrcode
+    from telethon.errors import SessionPasswordNeededError
+
+    login = client.qr_login()
+    for _ in range(10):  # ~10 minutes de patience
+        qr = qrcode.QRCode()
+        qr.add_data(login.url)
+        qr.print_ascii(invert=True)
+        print("Scanne ce QR : Telegram → Réglages → Appareils → Lier un ordinateur.")
+        print("(il se régénère automatiquement)\n")
+        try:
+            if login.wait(timeout=60):
+                return
+        except SessionPasswordNeededError:
+            import getpass
+
+            client.sign_in(password=getpass.getpass("Mot de passe (double authentification) : "))
+            return
+        except TimeoutError:
+            pass
+        login.recreate()
+    raise SystemExit("QR non scanné : relance le script.")
+
+
 def main() -> None:
     if "--sms" in sys.argv:
         print("Note : forcer le SMS n'est plus possible, Telegram choisit la voie d'envoi.\n")
@@ -121,7 +151,10 @@ def main() -> None:
     client.connect()
     try:
         if not client.is_user_authorized():
-            sign_in(client, ask_phone())
+            if "--qr" in sys.argv:
+                qr_login(client)
+            else:
+                sign_in(client, ask_phone())
         me = client.get_me()
         print(f"\nConnectée en tant que {me.first_name} (@{me.username}).\n")
         print("Conversations récentes — repère celle de Yoann :\n")
