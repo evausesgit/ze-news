@@ -39,8 +39,29 @@ for _ in $(seq 1 30); do
   sleep 1
 done
 
+# Inscrire la base locale dans .env : les commandes lancées à la main ensuite
+# (scripts.admin, app.worker) visent alors la même base sans rien préfixer.
+if [ ! -f .env ] || ! grep -q '^DATABASE_URL=' .env; then
+  echo "DATABASE_URL=$DATABASE_URL" >>.env
+  chmod 600 .env
+elif ! grep -qF "DATABASE_URL=$DATABASE_URL" .env; then
+  echo "  (.env pointe vers une autre base : je la laisse telle quelle)"
+fi
+
+# Les migrations sont réessayées : au tout premier démarrage, Postgres se
+# déclare « prêt » pendant son initialisation puis redémarre — une migration
+# lancée pile à ce moment-là échoue.
 echo "→ migrations"
-uv run alembic upgrade head >"$LOGS/alembic.log" 2>&1
+for attempt in $(seq 1 15); do
+  if uv run alembic upgrade head >"$LOGS/alembic.log" 2>&1; then
+    break
+  fi
+  if [ "$attempt" = 15 ]; then
+    echo "Migrations en échec, voir $LOGS/alembic.log" >&2
+    exit 1
+  fi
+  sleep 2
+done
 
 echo "→ API sur http://127.0.0.1:8810"
 kill_port 8810
