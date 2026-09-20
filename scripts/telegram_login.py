@@ -1,6 +1,7 @@
 """Connexion Telegram interactive → écrit TELEGRAM_SESSION dans .env (chmod 600).
 
-    uv run python -m scripts.telegram_login
+    uv run python -m scripts.telegram_login          # code dans l'app Telegram
+    uv run python -m scripts.telegram_login --sms    # code par SMS
 
 Demande l'api_id / api_hash (https://my.telegram.org → « API development
 tools »), puis le numéro de téléphone, le code reçu dans Telegram et, le cas
@@ -17,6 +18,7 @@ from __future__ import annotations
 import os
 import re
 import stat
+import sys
 from pathlib import Path
 
 from telethon.sessions import StringSession
@@ -42,11 +44,53 @@ def upsert_env(path: Path, values: dict[str, str]) -> None:
     os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)  # 600
 
 
+def sign_in(client, phone: str, force_sms: bool) -> None:
+    """Envoie le code puis connecte. Le code expire vite : ne pas traîner.
+
+    Par défaut Telegram envoie le code DANS l'application (conversation
+    « Telegram »). `--sms` le redemande par SMS, utile quand aucune autre
+    session n'est active ou que la notification n'arrive pas.
+    """
+    from telethon.errors import (
+        PhoneCodeExpiredError,
+        PhoneCodeInvalidError,
+        SessionPasswordNeededError,
+    )
+
+    sent = client.send_code_request(phone, force_sms=force_sms)
+    voie = "par SMS" if force_sms else "dans l'application Telegram (conversation « Telegram »)"
+    print(f"\nCode envoyé {voie}. Il expire en quelques minutes.")
+
+    for essai in range(3):
+        code = input("Code reçu : ").strip()
+        try:
+            client.sign_in(phone=phone, code=code, phone_code_hash=sent.phone_code_hash)
+            return
+        except SessionPasswordNeededError:
+            import getpass
+
+            client.sign_in(password=getpass.getpass("Mot de passe (double authentification) : "))
+            return
+        except PhoneCodeInvalidError:
+            print("Code invalide." + (" Dernier essai." if essai == 1 else ""))
+        except PhoneCodeExpiredError:
+            raise SystemExit(
+                "Code expiré. Relance le script et saisis le code dès sa réception."
+            ) from None
+    raise SystemExit("Trois codes invalides : relance le script.")
+
+
 def main() -> None:
+    force_sms = "--sms" in sys.argv
     api_id = settings.telegram_api_id or int(input("TELEGRAM_API_ID : ").strip())
     api_hash = settings.telegram_api_hash or input("TELEGRAM_API_HASH : ").strip()
 
-    with TelegramClient(StringSession(), api_id, api_hash) as client:
+    client = TelegramClient(StringSession(), api_id, api_hash)
+    client.connect()
+    try:
+        if not client.is_user_authorized():
+            phone = input("Numéro au format international (ex. +33612345678) : ").strip()
+            sign_in(client, phone, force_sms)
         me = client.get_me()
         print(f"\nConnectée en tant que {me.first_name} (@{me.username}).\n")
         print("Conversations récentes — repère celle de Yoann :\n")
@@ -62,6 +106,8 @@ def main() -> None:
                 "TELEGRAM_SESSION": client.session.save(),
             },
         )
+    finally:
+        client.disconnect()
 
     print(f"\n✓ Session écrite dans {ENV_PATH.resolve()} (chmod 600), jamais affichée.")
     print("\nEnsuite, déclare le fil avec la référence repérée ci-dessus :")
