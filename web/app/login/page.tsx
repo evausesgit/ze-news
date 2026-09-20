@@ -18,6 +18,23 @@ function safeNext(raw: string | null): string {
   return raw;
 }
 
+// Un message générique ne dit pas quoi corriger : la panne la plus fréquente
+// est un domaine absent de la liste autorisée du projet Firebase.
+function messageFor(code: string): string {
+  const map: Record<string, string> = {
+    "auth/unauthorized-domain":
+      `Le domaine ${typeof window !== "undefined" ? window.location.hostname : ""} ` +
+      "n'est pas autorisé dans le projet Firebase (Authentication → Settings → " +
+      "Authorized domains).",
+    "auth/operation-not-allowed":
+      "La connexion Google n'est pas activée dans le projet Firebase.",
+    "auth/network-request-failed": "Réseau indisponible : vérifie ta connexion puis réessaie.",
+    "auth/invalid-api-key": "La clé Firebase du site est invalide.",
+    "auth/internal-error": "Erreur interne de Firebase : réessaie dans un instant.",
+  };
+  return map[code] ?? `La connexion a échoué (${code || "raison inconnue"}).`;
+}
+
 function LoginInner() {
   const params = useSearchParams();
   const nextUrl = safeNext(params.get("next"));
@@ -63,7 +80,7 @@ function LoginInner() {
         return;
       }
       if (code !== "auth/popup-closed-by-user" && code !== "auth/cancelled-popup-request") {
-        setError("La connexion a échoué, réessaie.");
+        setError(messageFor(code));
       }
       setBusy(false);
     }
