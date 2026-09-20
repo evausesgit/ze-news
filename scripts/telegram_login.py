@@ -44,21 +44,52 @@ def upsert_env(path: Path, values: dict[str, str]) -> None:
     os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)  # 600
 
 
-def sign_in(client, phone: str, force_sms: bool) -> None:
+PHONE_RE = re.compile(r"\+?\d{8,15}")
+
+
+def ask_phone() -> str:
+    """Redemande tant que le numéro n'est pas plausible.
+
+    Un numéro vide partait jusqu'ici tel quel vers Telethon, qui plantait sur
+    un `TypeError` illisible dix appels plus bas.
+    """
+    while True:
+        raw = input("Numéro au format international (ex. +33612345678) : ")
+        phone = re.sub(r"[\s.\-()]", "", raw.strip())
+        if PHONE_RE.fullmatch(phone):
+            return phone
+        print("  Numéro vide ou invalide : indicatif puis chiffres, par exemple +33612345678.")
+
+
+def sign_in(client, phone: str) -> None:
     """Envoie le code puis connecte. Le code expire vite : ne pas traîner.
 
-    Par défaut Telegram envoie le code DANS l'application (conversation
-    « Telegram »). `--sms` le redemande par SMS, utile quand aucune autre
-    session n'est active ou que la notification n'arrive pas.
+    Telegram choisit seul la voie d'envoi : dans l'application s'il existe une
+    session active sur le compte, par SMS sinon. Forcer le SMS n'est plus
+    possible (`force_sms` est obsolète côté Telethon et sans effet).
     """
     from telethon.errors import (
+        FloodWaitError,
         PhoneCodeExpiredError,
         PhoneCodeInvalidError,
+        PhoneNumberInvalidError,
         SessionPasswordNeededError,
     )
 
-    sent = client.send_code_request(phone, force_sms=force_sms)
-    voie = "par SMS" if force_sms else "dans l'application Telegram (conversation « Telegram »)"
+    try:
+        sent = client.send_code_request(phone)
+    except PhoneNumberInvalidError:
+        raise SystemExit(f"Numéro refusé par Telegram : {phone}") from None
+    except FloodWaitError as e:
+        raise SystemExit(
+            f"Trop de tentatives : Telegram impose d'attendre {e.seconds // 60 + 1} minute(s)."
+        ) from None
+
+    voie = {"app": "dans l'application Telegram (conversation « Telegram »)",
+            "sms": "par SMS"}.get(
+        type(sent.type).__name__.replace("SentCodeType", "").lower(),
+        f"par {type(sent.type).__name__}",
+    )
     print(f"\nCode envoyé {voie}. Il expire en quelques minutes.")
 
     for essai in range(3):
@@ -81,7 +112,8 @@ def sign_in(client, phone: str, force_sms: bool) -> None:
 
 
 def main() -> None:
-    force_sms = "--sms" in sys.argv
+    if "--sms" in sys.argv:
+        print("Note : forcer le SMS n'est plus possible, Telegram choisit la voie d'envoi.\n")
     api_id = settings.telegram_api_id or int(input("TELEGRAM_API_ID : ").strip())
     api_hash = settings.telegram_api_hash or input("TELEGRAM_API_HASH : ").strip()
 
@@ -89,8 +121,7 @@ def main() -> None:
     client.connect()
     try:
         if not client.is_user_authorized():
-            phone = input("Numéro au format international (ex. +33612345678) : ").strip()
-            sign_in(client, phone, force_sms)
+            sign_in(client, ask_phone())
         me = client.get_me()
         print(f"\nConnectée en tant que {me.first_name} (@{me.username}).\n")
         print("Conversations récentes — repère celle de Yoann :\n")
