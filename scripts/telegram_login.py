@@ -111,6 +111,16 @@ def sign_in(client, phone: str) -> None:
     raise SystemExit("Trois codes invalides : relance le script.")
 
 
+def run_sync(client, coro):
+    """Exécute une coroutine sur la boucle du client.
+
+    `telethon.sync` ne « synchronise » que les méthodes du client : celles de
+    QRLogin restent des coroutines. Les appeler sans les attendre renvoyait un
+    objet toujours vrai — la connexion semblait réussie sans avoir eu lieu.
+    """
+    return client.loop.run_until_complete(coro)
+
+
 def qr_login(client) -> None:
     """Connexion par QR code, comme Telegram Desktop — sans code ni SMS.
 
@@ -126,9 +136,9 @@ def qr_login(client) -> None:
         qr.add_data(login.url)
         qr.print_ascii(invert=True)
         print("Scanne ce QR : Telegram → Réglages → Appareils → Lier un ordinateur.")
-        print("(il se régénère automatiquement)\n")
+        print("(il se régénère tout seul, pas de course contre la montre)\n")
         try:
-            if login.wait(timeout=60):
+            if run_sync(client, login.wait(timeout=60)):
                 return
         except SessionPasswordNeededError:
             import getpass
@@ -136,8 +146,8 @@ def qr_login(client) -> None:
             client.sign_in(password=getpass.getpass("Mot de passe (double authentification) : "))
             return
         except TimeoutError:
-            pass
-        login.recreate()
+            print("QR expiré, en voici un nouveau.\n")
+        run_sync(client, login.recreate())
     raise SystemExit("QR non scanné : relance le script.")
 
 
@@ -155,6 +165,10 @@ def main() -> None:
                 qr_login(client)
             else:
                 sign_in(client, ask_phone())
+        # Garde-fou : sans lui, une connexion ratée partait en AttributeError
+        # incompréhensible sur `me.first_name` quelques lignes plus bas.
+        if not client.is_user_authorized():
+            raise SystemExit("Connexion non aboutie : relance le script.")
         me = client.get_me()
         print(f"\nConnectée en tant que {me.first_name} (@{me.username}).\n")
         print("Conversations récentes — repère celle de Yoann :\n")
