@@ -21,6 +21,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.enrich import has_recent_share, is_recent
 from app.models import Feed, Link, Share
 from app.urls import extract_urls, parse_url
 
@@ -86,6 +87,14 @@ def record_message(session: Session, feed: Feed, msg: IncomingMessage) -> int:
         )
         session.flush()  # visible des vérifications suivantes (autoflush désactivé)
         created += 1
+        # Un lien pas encore résumé suit l'âge de son partage le plus récent :
+        # un nouveau partage récent le réveille, un vieux partage l'endort
+        # (sauf s'il a déjà un partage récent, ou si on l'a demandé).
+        if link.status in ("pending", "dormant") and link.requested_at is None:
+            if is_recent(msg.date):
+                link.status = "pending"
+            elif not has_recent_share(session, link.id):
+                link.status = "dormant"
     feed.last_message_id = max(feed.last_message_id or 0, msg.id)
     return created
 
@@ -140,7 +149,15 @@ async def _ingest_async(session: Session) -> int:
     async with client:
         me = await client.get_me()
         for feed in session.scalars(select(Feed).order_by(Feed.id)):
-            entity = await client.get_entity(_chat_ref(feed.telegram_chat))
+            # Fils de démonstration (scripts/demo_seed) : pas de vraie conversation.
+            if feed.telegram_chat.startswith("demo"):
+                continue
+            try:
+                entity = await client.get_entity(_chat_ref(feed.telegram_chat))
+            except (ValueError, TypeError) as e:
+                # Un fil mal référencé ne doit pas bloquer la lecture des autres.
+                log.error("fil %s : conversation introuvable (%s)", feed.name, e)
+                continue
             names: dict[int, str] = {}
             count = 0
             async for message in client.iter_messages(

@@ -12,7 +12,7 @@ import datetime as dt
 import logging
 from collections.abc import Callable
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.codex_cli import CodexCliError, run_codex
@@ -151,7 +151,77 @@ def enrich_link(
     return True
 
 
+# ------------------------------------------------------------ mise en sommeil
+#
+# Seuls les liens partagés récemment (settings.enrich_max_age_days) sont
+# résumés d'office. Les plus anciens passent en « dormant » : ils restent en
+# base, cherchables par leur URL, et résumables à la demande (requested_at).
+
+
+def enrich_cutoff() -> dt.datetime | None:
+    if settings.enrich_max_age_days <= 0:
+        return None
+    return dt.datetime.now(dt.UTC) - dt.timedelta(days=settings.enrich_max_age_days)
+
+
+def is_recent(when: dt.datetime) -> bool:
+    cutoff = enrich_cutoff()
+    if cutoff is None:
+        return True
+    if when.tzinfo is None:  # SQLite rend des dates naïves (stockées en UTC)
+        when = when.replace(tzinfo=dt.UTC)
+    return when >= cutoff
+
+
+def has_recent_share(session: Session, link_id: int) -> bool:
+    cutoff = enrich_cutoff()
+    if cutoff is None:
+        return True
+    return bool(
+        session.scalar(
+            select(Share.id).where(Share.link_id == link_id, Share.shared_at >= cutoff).limit(1)
+        )
+    )
+
+
+def archive_old_pending(session: Session) -> int:
+    """Met en sommeil les liens en attente dont le dernier partage est trop vieux.
+
+    Rattrape l'historique déjà ingéré et le temps qui passe. Les liens demandés
+    explicitement (requested_at) ne sont jamais rendormis.
+    """
+    cutoff = enrich_cutoff()
+    if cutoff is None:
+        return 0
+    old = (
+        select(Share.link_id)
+        .group_by(Share.link_id)
+        .having(func.max(Share.shared_at) < cutoff)
+    )
+    result = session.execute(
+        update(Link)
+        .where(Link.status == "pending", Link.requested_at.is_(None), Link.id.in_(old))
+        .values(status="dormant")
+        .execution_options(synchronize_session=False)
+    )
+    session.commit()
+    return result.rowcount or 0
+
+
+def request_summary(session: Session, link: Link) -> bool:
+    """Demande le résumé d'un lien en sommeil (ou en échec). True si mis en file."""
+    if link.status not in ("dormant", "failed"):
+        return False
+    link.status = "pending"
+    link.attempts = 0
+    link.error = None
+    link.requested_at = dt.datetime.now(dt.UTC)
+    session.commit()
+    return True
+
+
 def pending_links(session: Session, limit: int) -> list[Link]:
+    """File d'attente : demandes explicites d'abord, puis les plus récents partagés."""
     last_shared = (
         select(Share.link_id, func.max(Share.shared_at).label("last"))
         .group_by(Share.link_id)
@@ -161,7 +231,11 @@ def pending_links(session: Session, limit: int) -> list[Link]:
         select(Link)
         .join(last_shared, last_shared.c.link_id == Link.id, isouter=True)
         .where(Link.status == "pending", Link.attempts < settings.enrich_max_attempts)
-        .order_by(last_shared.c.last.desc().nulls_last(), Link.id.desc())
+        .order_by(
+            Link.requested_at.desc().nulls_last(),
+            last_shared.c.last.desc().nulls_last(),
+            Link.id.desc(),
+        )
         .limit(limit)
     )
     return list(session.scalars(stmt))

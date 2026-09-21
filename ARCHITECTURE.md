@@ -34,7 +34,7 @@ Seul `web` est exposé.
 | `users` | Compte Google (firebase_uid, email), langue par défaut des cartes (`en`) |
 | `feeds` | Une conversation Telegram surveillée + curseur `last_message_id` |
 | `feed_members` | Qui voit quel fil (`owner` / `member`) |
-| `links` | Le lien, dédoublonné par `canonical_url`, avec résumé EN/FR, label, statut d'enrichissement |
+| `links` | Le lien, dédoublonné par `canonical_url`, avec résumé EN/FR, label, statut (`pending`, `done`, `failed`, `dormant`) |
 | `link_themes` | Thèmes libres (minuscules, anglais), 1 à 4 par lien |
 | `shares` | Chaque apparition d'un lien dans un fil : message, expéditeur, date |
 | `link_states` | État PAR utilisateur : `seen_at` (swipé) et `opened_at` (double-clic) |
@@ -60,7 +60,13 @@ fxtwitter.com = un seul `link`.
    lien). 3 tentatives, puis `failed`.
 4. Les liens en attente sont traités **du plus récemment partagé au plus
    ancien**, par lots de 20 : les nouveautés arrivent vite même pendant le
-   rattrapage de l'historique.
+   rattrapage de l'historique. Les résumés demandés explicitement passent
+   devant (`links.requested_at`).
+5. **Mise en sommeil** : un lien dont le dernier partage date de plus de
+   `ENRICH_MAX_AGE_DAYS` jours (180 par défaut) passe en `dormant` au lieu
+   d'être résumé d'office — l'historique de Yoann compte des milliers de liens.
+   Un nouveau partage récent le réveille. Depuis la recherche, « Résumer ce
+   lien » le remet en tête de file (`POST /links/{id}/summarize`).
 
 Labels (taxonomie fermée, `app/labels.py`) : AI, TECH, POLITICS, NEWS, ECONOMY,
 STATS, SCIENCE, HEALTH, CULTURE, OTHER.
@@ -70,12 +76,13 @@ STATS, SCIENCE, HEALTH, CULTURE, OTHER.
 | Méthode | Route | Rôle |
 |---|---|---|
 | GET/PUT | `/me` | Profil, fils accessibles, langue par défaut |
-| GET | `/links` | Liste : `label` (OU), `theme` (ET), `q` (mots en ET), `date_from`/`date_to` (date de partage), `read` (all/unread/seen/opened), `offset`/`limit` |
+| GET | `/links` | Liste : `label` (OU), `theme` (ET), `q` (mots en ET), `date_from`/`date_to` (date de partage), `read` (all/unread/seen/opened), `include_dormant`, `offset`/`limit` |
 | GET | `/links/{id}` | Un lien |
 | POST | `/links/{id}/seen` | Marque vu (garde la 1re date) |
 | POST | `/links/{id}/opened` | Marque ouvert (et vu) |
 | DELETE | `/links/{id}/state` | Remet en non lu |
-| GET | `/facets` | Compteurs par label, thèmes fréquents, total / non lus / en attente |
+| POST | `/links/{id}/summarize` | Demande le résumé d'un lien en sommeil (tête de file) |
+| GET | `/facets` | Compteurs par label, thèmes fréquents, total / non lus / en attente / en sommeil |
 
 ## Sécurité
 

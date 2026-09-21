@@ -13,6 +13,7 @@ import {
   markOpened,
   markSeen,
   markUnread,
+  notifyChanged,
   type Facets,
   type LinkItem,
 } from "@/lib/api";
@@ -94,6 +95,7 @@ export default function FeedPage() {
     (updated: LinkItem) => {
       replace(updated);
       refreshFacets();
+      notifyChanged(); // la pastille de la barre de navigation suit
     },
     [refreshFacets],
   );

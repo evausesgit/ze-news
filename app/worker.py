@@ -15,7 +15,7 @@ import time
 
 from app.config import settings
 from app.db import SessionLocal
-from app.enrich import enrich_pending
+from app.enrich import archive_old_pending, enrich_pending
 from app.telegram_ingest import ingest_all
 
 log = logging.getLogger("zenews.worker")
@@ -31,6 +31,9 @@ def run_cycle() -> None:
             log.exception("ingestion Telegram en échec")
     with SessionLocal() as session:
         try:
+            dormis = archive_old_pending(session)
+            if dormis:
+                log.info("%d lien(s) ancien(s) mis en sommeil", dormis)
             ok, ko = enrich_pending(session)
             log.info("enrichissement : %d réussi(s), %d échec(s)", ok, ko)
         except Exception:

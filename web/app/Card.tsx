@@ -10,21 +10,30 @@ export default function Card({
   defaultLang,
   onToggleRead,
   onThemeClick,
+  onSummarize,
 }: {
   link: LinkItem;
   defaultLang: Lang;
   onToggleRead?: () => void;
   onThemeClick?: (theme: string) => void;
+  // Lien ancien « en sommeil » : demande son résumé au worker.
+  onSummarize?: () => void;
 }) {
   // Langue propre à la carte, qui suit la préférence globale tant qu'on n'y touche pas.
   const [lang, setLang] = useState<Lang>(defaultLang);
   useEffect(() => setLang(defaultLang), [defaultLang]);
 
+  const fr = lang === "fr";
+  const placeholder =
+    link.status === "dormant"
+      ? fr
+        ? "Lien ancien, pas encore résumé."
+        : "Older link, not summarised yet."
+      : fr
+        ? "Résumé en cours de préparation…"
+        : "Summary on its way…";
   const summary =
-    (lang === "fr" ? link.summary_fr : link.summary_en) ??
-    link.summary_en ??
-    link.summary_fr ??
-    (lang === "fr" ? "Résumé en cours de préparation…" : "Summary on its way…");
+    (fr ? link.summary_fr : link.summary_en) ?? link.summary_en ?? link.summary_fr ?? placeholder;
   const read = Boolean(link.seen_at || link.opened_at);
   const label = link.label ?? "PENDING";
 
@@ -34,7 +43,9 @@ export default function Card({
       data-read={read}
     >
       <header className="card-head">
-        <span className="chip">{labelName(link.label, lang)}</span>
+        <span className="chip">
+          {link.status === "dormant" ? (fr ? "Ancien" : "Older") : labelName(link.label, lang)}
+        </span>
         {link.opened_at ? (
           <span className="state state-opened">{lang === "fr" ? "ouvert" : "opened"}</span>
         ) : read ? (
@@ -65,6 +76,25 @@ export default function Card({
       <p className="summary">{summary}</p>
 
       {link.title && <p className="title">{link.title}</p>}
+
+      {link.status === "dormant" && onSummarize && (
+        <button
+          type="button"
+          className="summarize"
+          onPointerDown={(e) => e.stopPropagation()}
+          onPointerUp={(e) => e.stopPropagation()}
+          onClick={onSummarize}
+        >
+          {fr ? "Résumer ce lien" : "Summarise this link"}
+        </button>
+      )}
+      {link.status === "pending" && !link.summary_en && (
+        <p className="title">
+          {fr
+            ? "Demandé : résumé au prochain passage du worker (10 min au plus)."
+            : "Requested: summarised on the worker's next pass (within 10 min)."}
+        </p>
+      )}
 
       {link.themes.length > 0 && (
         <ul className="themes">

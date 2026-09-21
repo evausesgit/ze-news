@@ -13,6 +13,8 @@ import {
   markOpened,
   markSeen,
   markUnread,
+  notifyChanged,
+  summarizeLink,
   type Facets,
   type LinkItem,
   type LinkQuery,
@@ -33,21 +35,36 @@ function ResultCard({
   onTheme: (t: string) => void;
 }) {
   const { lang } = usePrefs();
+  // Réponse du serveur : on garde sa version, et la pastille de la nav suit.
+  const saved = (l: LinkItem) => {
+    onChange(l);
+    notifyChanged();
+  };
   const open = () => {
     window.open(link.url, "_blank", "noopener,noreferrer");
     const now = new Date().toISOString();
     onChange({ ...link, opened_at: now, seen_at: link.seen_at ?? now });
-    markOpened(link.id).then(onChange).catch(() => {});
+    markOpened(link.id).then(saved).catch(() => {});
   };
   const doubleTap = useDoubleTap(open);
   const toggle = () => {
     const read = link.seen_at || link.opened_at;
     onChange({ ...link, seen_at: read ? null : new Date().toISOString(), opened_at: read ? null : link.opened_at });
-    (read ? markUnread(link.id) : markSeen(link.id)).then(onChange).catch(() => {});
+    (read ? markUnread(link.id) : markSeen(link.id)).then(saved).catch(() => {});
+  };
+  const summarize = () => {
+    onChange({ ...link, status: "pending" });
+    summarizeLink(link.id).then(saved).catch(() => {});
   };
   return (
     <div className="result" onPointerUp={(e) => doubleTap(e)}>
-      <Card link={link} defaultLang={lang} onToggleRead={toggle} onThemeClick={onTheme} />
+      <Card
+        link={link}
+        defaultLang={lang}
+        onToggleRead={toggle}
+        onThemeClick={onTheme}
+        onSummarize={summarize}
+      />
     </div>
   );
 }
@@ -65,6 +82,7 @@ function SearchInner() {
   const dateFrom = params.get("date_from") ?? "";
   const dateTo = params.get("date_to") ?? "";
   const read = (params.get("read") as Read) ?? "all";
+  const dormant = params.get("anciens") === "1";
 
   const [text, setText] = useState(q);
   const [items, setItems] = useState<LinkItem[]>([]);
@@ -100,7 +118,7 @@ function SearchInner() {
   useEffect(() => {
     setLoading(true);
     setError(null);
-    getLinks({ label: labels, theme: themes, q, date_from: dateFrom, date_to: dateTo, read, limit: PAGE })
+    getLinks({ label: labels, theme: themes, q, date_from: dateFrom, date_to: dateTo, read, include_dormant: dormant, limit: PAGE })
       .then((page) => {
         setItems(page.items);
         setTotal(page.total);
@@ -117,7 +135,7 @@ function SearchInner() {
   const more = () =>
     getLinks({
       label: labels, theme: themes, q, date_from: dateFrom, date_to: dateTo, read,
-      limit: PAGE, offset: items.length,
+      include_dormant: dormant, limit: PAGE, offset: items.length,
     }).then((page) => {
       const known = new Set(items.map((i) => i.id));
       setItems([...items, ...page.items.filter((i) => !known.has(i.id))]);
@@ -132,7 +150,8 @@ function SearchInner() {
     if (!themes.includes(t)) update({ theme: [...themes, t] });
   };
 
-  const hasFilters = labels.length || themes.length || q || dateFrom || dateTo || read !== "all";
+  const hasFilters =
+    labels.length || themes.length || q || dateFrom || dateTo || read !== "all" || dormant;
 
   return (
     <main className="page search">
@@ -178,6 +197,18 @@ function SearchInner() {
               <option value="opened">{fr ? "Ouverts" : "Opened"}</option>
             </select>
           </label>
+          {facets && facets.dormant > 0 && (
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={dormant}
+                onChange={(e) => update({ anciens: e.target.checked ? "1" : null })}
+              />
+              {fr
+                ? `Inclure les liens anciens non résumés (${facets.dormant})`
+                : `Include older, unsummarised links (${facets.dormant})`}
+            </label>
+          )}
           {hasFilters ? (
             <button type="button" className="ghost" onClick={() => router.replace(pathname)}>
               {fr ? "Effacer les filtres" : "Clear filters"}

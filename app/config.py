@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     enrich_batch_size: int = 20
     enrich_max_attempts: int = 3
     fetch_timeout_seconds: float = 15.0
+    # Seuls les liens partagés depuis moins de N jours sont résumés d'office.
+    # Les plus anciens restent « en sommeil » (status=dormant), résumables à la
+    # demande depuis la recherche. 0 = pas de limite.
+    enrich_max_age_days: int = 180
 
 
 settings = Settings()

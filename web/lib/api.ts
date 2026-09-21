@@ -36,6 +36,7 @@ export interface Facets {
   total: number;
   unread: number;
   pending: number;
+  dormant: number;
 }
 
 export interface Me {
@@ -52,6 +53,7 @@ export interface LinkQuery {
   date_from?: string;
   date_to?: string;
   read?: "all" | "unread" | "seen" | "opened";
+  include_dormant?: boolean;
   offset?: number;
   limit?: number;
 }
@@ -92,6 +94,15 @@ export const markOpened = (id: number) =>
   call<LinkItem>(`/links/${id}/opened`, { method: "POST" });
 export const markUnread = (id: number) =>
   call<LinkItem>(`/links/${id}/state`, { method: "DELETE" });
+export const summarizeLink = (id: number) =>
+  call<LinkItem>(`/links/${id}/summarize`, { method: "POST" });
+
+// Prévient la barre de navigation qu'un compteur a bougé (lu, ouvert, résumé
+// demandé) : la pastille se met à jour sans attendre son rafraîchissement.
+export const CHANGED_EVENT = "zenews:changed";
+export function notifyChanged() {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(CHANGED_EVENT));
+}
 
 // Libellés affichés des labels (miroir de app/labels.py).
 export const LABEL_NAMES: Record<string, { en: string; fr: string }> = {

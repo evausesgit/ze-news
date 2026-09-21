@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.api.identity import current_user
 from app.db import get_session
+from app.enrich import request_summary
 from app.labels import LABEL_CODES, LABELS
 from app.models import FeedMember, Link, LinkState, LinkTheme, Share, User
 
@@ -117,6 +118,7 @@ def list_links(
     date_to: dt.date | None = None,
     read: Literal["all", "unread", "seen", "opened"] = "all",
     include_pending: bool = False,
+    include_dormant: bool = False,
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=30, ge=1, le=100),
     user: User = Depends(current_user),
@@ -124,8 +126,12 @@ def list_links(
 ):
     stmt, (vis, state) = _base_query(user)
     conds = []
-    if not include_pending:
-        conds.append(Link.status == "done")
+    statuses = ["done"]
+    if include_pending:
+        statuses += ["pending", "failed"]
+    if include_dormant:  # liens anciens, pas encore résumés (résumables à la demande)
+        statuses.append("dormant")
+    conds.append(Link.status.in_(statuses))
     labels = [x.upper() for x in label if x]
     if labels:
         conds.append(Link.label.in_(labels))
@@ -227,6 +233,20 @@ def mark_unread(
     return _set_state(session, user, link_id, seen_at=None, opened_at=None)
 
 
+@router.post("/links/{link_id}/summarize", response_model=LinkOut)
+def summarize(
+    link_id: int, user: User = Depends(current_user), session: Session = Depends(get_session)
+):
+    """Demande le résumé d'un lien en sommeil (ou en échec).
+
+    Le lien passe en tête de la file du worker : résumé au prochain passage.
+    Sans effet sur un lien déjà résumé ou déjà en attente.
+    """
+    row = _get_visible(session, user, link_id)
+    request_summary(session, row[0])
+    return _to_out(session, user, _get_visible(session, user, link_id))
+
+
 class LabelCount(BaseModel):
     code: str
     en: str
@@ -245,6 +265,7 @@ class Facets(BaseModel):
     total: int
     unread: int
     pending: int
+    dormant: int
 
 
 @router.get("/facets", response_model=Facets)
@@ -267,11 +288,13 @@ def facets(user: User = Depends(current_user), session: Session = Depends(get_se
             done.c.seen_at.is_(None), done.c.opened_at.is_(None)
         )
     ) or 0
-    pending = session.scalar(
-        select(func.count()).select_from(
-            stmt.where(Link.status == "pending").subquery()
-        )
-    ) or 0
+    def count_status(status: str) -> int:
+        return session.scalar(
+            select(func.count()).select_from(stmt.where(Link.status == status).subquery())
+        ) or 0
+
+    pending = count_status("pending")
+    dormant = count_status("dormant")
     return Facets(
         labels=[
             LabelCount(code=c, en=LABELS[c]["en"], fr=LABELS[c]["fr"], count=by_label.get(c, 0))
@@ -281,4 +304,5 @@ def facets(user: User = Depends(current_user), session: Session = Depends(get_se
         total=total,
         unread=unread,
         pending=pending,
+        dormant=dormant,
     )

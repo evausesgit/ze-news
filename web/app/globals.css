@@ -135,6 +135,23 @@ input, select {
   border-radius: 999px;
 }
 .nav-links a[aria-current="page"] { color: var(--text); background: var(--surface-2); }
+
+/* Pastille de non lus sur « Fil ». */
+.badge {
+  display: inline-block;
+  min-width: 1.25rem;
+  margin-left: 0.35rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--politics);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.25rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  vertical-align: 1px;
+}
 .nav-right { margin-left: auto; display: flex; align-items: center; gap: 0.5rem; }
 .nav-right .ghost { padding: 0.35rem 0.8rem; font-size: 0.9rem; }
 
@@ -329,6 +346,18 @@ input, select {
 .chip-filter:not([class*="label-"])[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--bg); }
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; }
 .row label { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--muted); font-size: 0.9rem; }
+.row label.check input { width: 1rem; height: 1rem; accent-color: var(--accent); }
+
+/* Lien ancien : demande de résumé. */
+.summarize {
+  align-self: flex-start;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  padding: 0.3rem 0.8rem;
+  font-size: 0.85rem;
+}
+.label-pending .chip { text-transform: none; }
 .theme-cloud summary { cursor: pointer; color: var(--muted); font-size: 0.9rem; margin-bottom: 0.5rem; }
 .result-count { color: var(--muted); font-size: 0.9rem; margin: 0 0 0.75rem; }
 

@@ -94,7 +94,10 @@ class Link(Base):
     summary_fr: Mapped[str | None] = mapped_column(Text)
     label: Mapped[str | None] = mapped_column(String(20), index=True)
 
+    # pending → done | failed ; dormant = trop ancien pour être résumé d'office.
     status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
+    # Résumé demandé explicitement pour un lien en sommeil : passe en tête de file.
+    requested_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     error: Mapped[str | None] = mapped_column(Text)
     enriched_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True))
