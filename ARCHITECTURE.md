@@ -36,7 +36,7 @@ Seul `web` est exposé.
 | `feed_members` | Qui voit quel fil (`owner` / `member`) |
 | `links` | Le lien, dédoublonné par `canonical_url`, avec résumé EN/FR, label, statut (`pending`, `done`, `failed`, `dormant`) |
 | `link_themes` | Thèmes libres (minuscules, anglais), 1 à 4 par lien |
-| `shares` | Chaque apparition d'un lien dans un fil : message, expéditeur, date |
+| `shares` | Chaque apparition d'un lien dans un fil : message, expéditeur (initiales seulement, anonymisé), date |
 | `link_states` | État PAR utilisateur : `seen_at` (swipé) et `opened_at` (double-clic) |
 
 Principe : le résumé est une connaissance **partagée** (calculée une fois),

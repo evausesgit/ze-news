@@ -137,3 +137,18 @@ def test_run_codex_missing_binary(monkeypatch):
         assert "introuvable" in str(e)
     else:
         raise AssertionError("CodexCliError attendue")
+
+
+def test_sender_is_anonymised_to_initials(session, feeds):
+    from app.telegram_ingest import initials
+
+    assert initials("Yoann Dupont") == "YD"
+    assert initials("jean-pierre martin") == "JPM"
+    assert initials("Élodie") == "É"
+    assert initials("moi") == "moi"
+    assert initials("123456") == ""
+    record_message(session, feeds["yoann"], IncomingMessage(
+        id=1, date=at(3), sender="Yoann Dupont", text="https://a.example.com", entity_urls=[],
+    ))
+    session.flush()
+    assert session.scalars(select(Share.sender_name)).all() == ["YD"]

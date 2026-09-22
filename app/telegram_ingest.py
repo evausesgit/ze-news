@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import datetime as dt
 import logging
+import re
 from dataclasses import dataclass
 
 from sqlalchemy import select
@@ -35,6 +36,17 @@ class IncomingMessage:
     sender: str
     text: str
     entity_urls: list[str]
+
+
+def initials(name: str) -> str:
+    """Anonymise l'expéditeur : « Yoann Dupont » → « YD », « Jean-Pierre » → « JP ».
+
+    On ne stocke jamais le nom complet. « moi » (le compte connecté) est gardé
+    tel quel ; un identifiant purement numérique donne une chaîne vide.
+    """
+    if name == "moi":
+        return name
+    return "".join(w[0].upper() for w in re.findall(r"[^\W\d_]+", name))[:3]
 
 
 def get_or_create_link(session: Session, url: str) -> Link | None:
@@ -80,7 +92,7 @@ def record_message(session: Session, feed: Feed, msg: IncomingMessage) -> int:
                 feed_id=feed.id,
                 link_id=link.id,
                 telegram_message_id=msg.id,
-                sender_name=msg.sender[:200],
+                sender_name=initials(msg.sender),
                 message_text=msg.text or "",
                 shared_at=msg.date,
             )
