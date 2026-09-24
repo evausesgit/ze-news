@@ -1,8 +1,8 @@
 # Ze News — architecture
 
 Les liens partagés dans une conversation Telegram (au départ : Yoann → Eva)
-deviennent une base de connaissances : chaque lien est lu, résumé en une phrase
-(EN + FR) par **Codex**, classé sous un **label** et des **thèmes**, puis
+deviennent une base de connaissances : chaque lien est lu, résumé (une phrase
+factuelle puis une interprétation de quelques lignes, EN + FR) par **Codex**, classé sous un **label** et des **thèmes**, puis
 présenté en cartes swipables et cherchables. Multi-utilisateur dès la v1.
 
 ## Vue d'ensemble

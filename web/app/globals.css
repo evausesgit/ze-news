@@ -242,7 +242,7 @@ input, select {
 .state-opened::before { content: "↗ "; }
 .card-head .lang-toggle { margin-left: auto; }
 
-.summary { margin: 0; font-size: 1.2rem; line-height: 1.45; font-weight: 500; letter-spacing: -0.005em; }
+.summary { margin: 0; font-size: 1.2rem; line-height: 1.45; font-weight: 500; letter-spacing: -0.005em; white-space: pre-line; }
 .title { margin: 0; color: var(--muted); font-size: 0.9rem; }
 
 .themes { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0; padding: 0; list-style: none; }

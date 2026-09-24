@@ -54,9 +54,14 @@ Tu alimentes une base de connaissances personnelle de liens partagés entre amis
 Pour le lien ci-dessous, produis :
 
 1. `title` : un titre court et factuel (<= 12 mots), dans la langue d'origine.
-2. `summary_en` : UNE phrase en anglais (<= 30 mots) qui dit de quoi il s'agit
-   concrètement : qui, quoi, le chiffre ou l'idée clé. Pas de « This tweet… ».
-3. `summary_fr` : la même phrase en français naturel (pas du mot à mot).
+2. `summary_en` : en anglais, deux parties séparées par une ligne vide :
+   - d'abord UNE phrase (<= 30 mots) qui dit de quoi il s'agit concrètement :
+     qui, quoi, le chiffre ou l'idée clé. Pas de « This tweet… ».
+   - puis une interprétation de 2 à 4 phrases : pourquoi c'est important, ce
+     que ça change ou révèle, le contexte utile, les limites ou points à
+     nuancer. Pas de paraphrase de la première phrase, pas de remplissage.
+3. `summary_fr` : le même texte en français naturel (pas du mot à mot), avec la
+   même structure.
 4. `label` : UN seul code parmi :
 {labels}
 5. `themes` : 1 à 4 thèmes précis en minuscules, en anglais (ex. « openai »,
