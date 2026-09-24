@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatDate, labelName, type Lang, type LinkItem } from "@/lib/api";
 
 // Contenu d'une carte. Les gestes (swipe, double-tap) sont gérés par le parent :
@@ -34,6 +34,24 @@ export default function Card({
         : "Summary on its way…";
   const summary =
     (fr ? link.summary_fr : link.summary_en) ?? link.summary_en ?? link.summary_fr ?? placeholder;
+  // Résumé = phrase factuelle, puis (après une ligne vide) l'interprétation.
+  const [fact, ...rest] = summary.split(/\n\s*\n/);
+  const interpretation = rest.join("\n\n").trim();
+  // Texte qui dépasse de la carte : fondu en bas tant qu'il reste à lire.
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [more, setMore] = useState(false);
+  const checkMore = () => {
+    const el = bodyRef.current;
+    if (el) setMore(el.scrollHeight - el.scrollTop - el.clientHeight > 4);
+  };
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (!el) return;
+    checkMore();
+    const ro = new ResizeObserver(checkMore);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [summary]);
   const read = Boolean(link.seen_at || link.opened_at);
   const label = link.label ?? "PENDING";
 
@@ -73,9 +91,11 @@ export default function Card({
         </div>
       </header>
 
-      <p className="summary">{summary}</p>
-
-      {link.title && <p className="title">{link.title}</p>}
+      <div ref={bodyRef} className={`card-body ${more ? "has-more" : ""}`} onScroll={checkMore}>
+        <p className="summary">{fact}</p>
+        {interpretation && <p className="interpretation">{interpretation}</p>}
+        {link.title && <p className="title">{link.title}</p>}
+      </div>
 
       {link.status === "dormant" && onSummarize && (
         <button
