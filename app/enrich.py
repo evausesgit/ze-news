@@ -156,6 +156,45 @@ def enrich_link(
     return True
 
 
+def resummarize_link(
+    session: Session, link: Link, runner: Runner = run_codex, fetcher: Fetcher = fetch
+) -> bool:
+    """Refait le résumé d'un lien déjà enrichi (changement de prompt). True si succès.
+
+    Repart du contenu déjà lu (content_excerpt) quand il existe : la page a pu
+    disparaître depuis. En cas d'échec, le lien garde son résumé et son statut.
+    """
+    if link.content_excerpt:
+        fetched = Fetched(ok=True, text=link.content_excerpt)
+    else:
+        parsed = parse_url(link.url)
+        fetched = fetcher(parsed) if parsed else Fetched(error="URL illisible")
+    message_text = session.scalar(
+        select(Share.message_text).where(Share.link_id == link.id).order_by(Share.shared_at)
+    ) or ""
+    try:
+        prompt = build_prompt(link, fetched, message_text)
+        data, _usage = runner(prompt, SCHEMA, settings.codex_web_search and not fetched.ok)
+    except CodexCliError as e:
+        session.rollback()
+        log.warning("codex a échoué en re-résumant le lien %s : %s", link.id, e)
+        return False
+    summary_en = (data.get("summary_en") or "").strip()
+    summary_fr = (data.get("summary_fr") or "").strip()
+    if not (summary_en or summary_fr):
+        return False
+    label = data.get("label")
+    link.label = label if label in LABEL_CODES else "OTHER"
+    link.summary_en = summary_en or None
+    link.summary_fr = summary_fr or None
+    link.themes.clear()
+    session.flush()  # un thème identique réinséré ne doit pas heurter l'ancien
+    link.themes = [LinkTheme(theme=t) for t in normalize_themes(data.get("themes"))]
+    link.enriched_at = dt.datetime.now(dt.UTC)
+    session.commit()
+    return True
+
+
 # ------------------------------------------------------------ mise en sommeil
 #
 # Seuls les liens partagés récemment (settings.enrich_max_age_days) sont
