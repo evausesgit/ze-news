@@ -54,9 +54,14 @@ Tu alimentes une base de connaissances personnelle de liens partagés entre amis
 Pour le lien ci-dessous, produis :
 
 1. `title` : un titre court et factuel (<= 12 mots), dans la langue d'origine.
-2. `summary_en` : UNE phrase en anglais (<= 30 mots) qui dit de quoi il s'agit
-   concrètement : qui, quoi, le chiffre ou l'idée clé. Pas de « This tweet… ».
-3. `summary_fr` : la même phrase en français naturel (pas du mot à mot).
+2. `summary_en` : en anglais, deux parties séparées par une ligne vide :
+   - d'abord UNE phrase (<= 30 mots) qui dit de quoi il s'agit concrètement :
+     qui, quoi, le chiffre ou l'idée clé. Pas de « This tweet… ».
+   - puis une interprétation de 2 à 4 phrases : pourquoi c'est important, ce
+     que ça change ou révèle, le contexte utile, les limites ou points à
+     nuancer. Pas de paraphrase de la première phrase, pas de remplissage.
+3. `summary_fr` : le même texte en français naturel (pas du mot à mot), avec la
+   même structure.
 4. `label` : UN seul code parmi :
 {labels}
 5. `themes` : 1 à 4 thèmes précis en minuscules, en anglais (ex. « openai »,
@@ -146,6 +151,45 @@ def enrich_link(
     link.themes = [LinkTheme(theme=t) for t in normalize_themes(data.get("themes"))]
     link.status = "done"
     link.error = None
+    link.enriched_at = dt.datetime.now(dt.UTC)
+    session.commit()
+    return True
+
+
+def resummarize_link(
+    session: Session, link: Link, runner: Runner = run_codex, fetcher: Fetcher = fetch
+) -> bool:
+    """Refait le résumé d'un lien déjà enrichi (changement de prompt). True si succès.
+
+    Repart du contenu déjà lu (content_excerpt) quand il existe : la page a pu
+    disparaître depuis. En cas d'échec, le lien garde son résumé et son statut.
+    """
+    if link.content_excerpt:
+        fetched = Fetched(ok=True, text=link.content_excerpt)
+    else:
+        parsed = parse_url(link.url)
+        fetched = fetcher(parsed) if parsed else Fetched(error="URL illisible")
+    message_text = session.scalar(
+        select(Share.message_text).where(Share.link_id == link.id).order_by(Share.shared_at)
+    ) or ""
+    try:
+        prompt = build_prompt(link, fetched, message_text)
+        data, _usage = runner(prompt, SCHEMA, settings.codex_web_search and not fetched.ok)
+    except CodexCliError as e:
+        session.rollback()
+        log.warning("codex a échoué en re-résumant le lien %s : %s", link.id, e)
+        return False
+    summary_en = (data.get("summary_en") or "").strip()
+    summary_fr = (data.get("summary_fr") or "").strip()
+    if not (summary_en or summary_fr):
+        return False
+    label = data.get("label")
+    link.label = label if label in LABEL_CODES else "OTHER"
+    link.summary_en = summary_en or None
+    link.summary_fr = summary_fr or None
+    link.themes.clear()
+    session.flush()  # un thème identique réinséré ne doit pas heurter l'ancien
+    link.themes = [LinkTheme(theme=t) for t in normalize_themes(data.get("themes"))]
     link.enriched_at = dt.datetime.now(dt.UTC)
     session.commit()
     return True

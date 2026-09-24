@@ -4,7 +4,14 @@ from sqlalchemy import func, select
 
 from app import codex_cli
 from app.codex_cli import CodexCliError, build_command, parse_usage
-from app.enrich import SCHEMA, enrich_link, enrich_pending, normalize_themes, pending_links
+from app.enrich import (
+    SCHEMA,
+    enrich_link,
+    enrich_pending,
+    normalize_themes,
+    pending_links,
+    resummarize_link,
+)
 from app.fetch import Fetched
 from app.models import Link, Share
 from app.telegram_ingest import IncomingMessage, record_message
@@ -99,6 +106,39 @@ def test_enrich_failure_retries_then_fails(session, feeds):
         assert not enrich_link(session, link, runner=runner, fetcher=_ok_fetcher)
     assert link.status == "failed" and link.attempts == 3 and "boom" in link.error
     assert pending_links(session, 10) == []
+
+
+def test_resummarize_reuses_stored_content(session, feeds):
+    record_message(session, feeds["yoann"], _msg(1, "https://x.com/openai/status/1"))
+    session.commit()
+    link = session.scalar(select(Link))
+    first = _fake_runner({"title": "GPT-6", "summary_en": "old", "summary_fr": "ancien",
+                          "label": "AI", "themes": ["openai", "llm"]})
+    assert enrich_link(session, link, runner=first, fetcher=_ok_fetcher)
+    runner = _fake_runner({"title": "x", "summary_en": "New.\n\nWhy.", "summary_fr": "Neuf.\n\nPourquoi.",
+                           "label": "TECH", "themes": ["openai", "gpu"]})
+
+    def no_fetch(*_a, **_k):
+        raise AssertionError("le contenu stocké doit suffire")
+
+    assert resummarize_link(session, link, runner=runner, fetcher=no_fetch)
+    assert link.summary_fr == "Neuf.\n\nPourquoi." and link.label == "TECH"
+    assert sorted(t.theme for t in link.themes) == ["gpu", "openai"]
+    assert link.status == "done" and link.title == "GPT-6"
+    assert "GPT-6 released" in runner.calls[0]["prompt"]
+
+
+def test_resummarize_failure_keeps_old_summary(session, feeds):
+    record_message(session, feeds["yoann"], _msg(1, "https://example.com/x"))
+    session.commit()
+    link = session.scalar(select(Link))
+    ok = _fake_runner({"title": "t", "summary_en": "e", "summary_fr": "f",
+                       "label": "NEWS", "themes": ["x"]})
+    assert enrich_link(session, link, runner=ok, fetcher=_ok_fetcher)
+    for _ in range(4):
+        assert not resummarize_link(session, link, runner=_fake_runner(CodexCliError("boom")))
+    assert link.status == "done" and link.summary_fr == "f" and link.attempts == 1
+    assert [t.theme for t in link.themes] == ["x"]
 
 
 def test_pending_links_newest_share_first(session, feeds):

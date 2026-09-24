@@ -242,7 +242,21 @@ input, select {
 .state-opened::before { content: "↗ "; }
 .card-head .lang-toggle { margin-left: auto; }
 
-.summary { margin: 0; font-size: 1.2rem; line-height: 1.45; font-weight: 500; letter-spacing: -0.005em; }
+/* Zone de texte : défile verticalement si le résumé dépasse la carte. */
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.card-body.has-more {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 2.5rem), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 2.5rem), transparent);
+}
+.summary { margin: 0; font-size: 1.2rem; line-height: 1.45; font-weight: 500; letter-spacing: -0.005em; white-space: pre-line; }
+.interpretation { margin: 0; font-size: 1rem; line-height: 1.5; color: var(--muted); white-space: pre-line; }
 .title { margin: 0; color: var(--muted); font-size: 0.9rem; }
 
 .themes { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0; padding: 0; list-style: none; }
@@ -300,6 +314,14 @@ input, select {
 }
 .deck-slot.top:active { cursor: grabbing; }
 .deck .card { overflow: hidden; }
+.deck .card-head, .deck .themes, .deck .card-foot { flex-shrink: 0; }
+
+@media (max-width: 520px) {
+  .deck { height: min(72vh, 620px); height: min(72dvh, 620px); }
+  .card { padding: 1rem 1rem 0.9rem; gap: 0.7rem; }
+  .summary { font-size: 1.08rem; }
+  .interpretation { font-size: 0.95rem; }
+}
 
 .empty {
   display: flex;
@@ -365,6 +387,7 @@ input, select {
 .result { user-select: none; -webkit-user-select: none; cursor: pointer; }
 .result .card { box-shadow: none; }
 .result .summary { font-size: 1.02rem; }
+.result .interpretation { font-size: 0.92rem; }
 .more { display: flex; justify-content: center; margin-top: 1.5rem; }
 
 /* -------------------------------------------------------------- login */
