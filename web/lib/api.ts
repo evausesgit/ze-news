@@ -125,9 +125,12 @@ export function labelName(code: string | null, lang: Lang): string {
 
 export function formatDate(iso: string | null, lang: Lang): string {
   if (!iso) return "";
-  return new Date(iso).toLocaleDateString(lang === "fr" ? "fr-FR" : "en-GB", {
+  // Date et heure du partage, dans le fuseau de l'appareil.
+  return new Date(iso).toLocaleString(lang === "fr" ? "fr-FR" : "en-GB", {
     day: "numeric",
     month: "short",
     year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
