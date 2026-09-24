@@ -73,10 +73,13 @@ def test_enrich_link_success(session, feeds):
     link = session.scalar(select(Link))
     runner = _fake_runner({
         "title": "GPT-6", "summary_en": "OpenAI ships GPT-6.", "summary_fr": "OpenAI sort GPT-6.",
+        "interpretation_en": "A big step.", "interpretation_fr": " Un grand pas. ",
         "label": "AI", "themes": ["OpenAI", "#LLM", "openai"],
     })
     assert enrich_link(session, link, runner=runner, fetcher=_ok_fetcher)
     assert link.status == "done" and link.label == "AI"
+    assert link.summary_en == "OpenAI ships GPT-6.\n\nA big step."
+    assert link.summary_fr == "OpenAI sort GPT-6.\n\nUn grand pas."
     assert sorted(t.theme for t in link.themes) == ["llm", "openai"]
     assert link.author == "@openai"
     call = runner.calls[0]
@@ -115,7 +118,8 @@ def test_resummarize_reuses_stored_content(session, feeds):
     first = _fake_runner({"title": "GPT-6", "summary_en": "old", "summary_fr": "ancien",
                           "label": "AI", "themes": ["openai", "llm"]})
     assert enrich_link(session, link, runner=first, fetcher=_ok_fetcher)
-    runner = _fake_runner({"title": "x", "summary_en": "New.\n\nWhy.", "summary_fr": "Neuf.\n\nPourquoi.",
+    runner = _fake_runner({"title": "x", "summary_en": "New.", "interpretation_en": "Why.",
+                           "summary_fr": "Neuf.", "interpretation_fr": "Pourquoi.",
                            "label": "TECH", "themes": ["openai", "gpu"]})
 
     def no_fetch(*_a, **_k):

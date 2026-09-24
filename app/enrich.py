@@ -31,10 +31,15 @@ SCHEMA = {
         "title": {"type": "string"},
         "summary_en": {"type": "string"},
         "summary_fr": {"type": "string"},
+        "interpretation_en": {"type": "string"},
+        "interpretation_fr": {"type": "string"},
         "label": {"type": "string", "enum": LABEL_CODES},
         "themes": {"type": "array", "items": {"type": "string"}},
     },
-    "required": ["title", "summary_en", "summary_fr", "label", "themes"],
+    "required": [
+        "title", "summary_en", "summary_fr", "interpretation_en", "interpretation_fr",
+        "label", "themes",
+    ],
 }
 
 _LABEL_GUIDE = """\
@@ -54,17 +59,17 @@ Tu alimentes une base de connaissances personnelle de liens partagés entre amis
 Pour le lien ci-dessous, produis :
 
 1. `title` : un titre court et factuel (<= 12 mots), dans la langue d'origine.
-2. `summary_en` : en anglais, deux parties séparées par une ligne vide :
-   - d'abord UNE phrase (<= 30 mots) qui dit de quoi il s'agit concrètement :
-     qui, quoi, le chiffre ou l'idée clé. Pas de « This tweet… ».
-   - puis une interprétation de 2 à 4 phrases : pourquoi c'est important, ce
-     que ça change ou révèle, le contexte utile, les limites ou points à
-     nuancer. Pas de paraphrase de la première phrase, pas de remplissage.
-3. `summary_fr` : le même texte en français naturel (pas du mot à mot), avec la
-   même structure.
-4. `label` : UN seul code parmi :
+2. `summary_en` : UNE phrase en anglais (<= 30 mots) qui dit de quoi il s'agit
+   concrètement : qui, quoi, le chiffre ou l'idée clé. Pas de « This tweet… ».
+3. `interpretation_en` : en anglais, une interprétation de 2 à 4 phrases :
+   pourquoi c'est important, ce que ça change ou révèle, le contexte utile, les
+   limites ou points à nuancer. Pas de paraphrase de `summary_en`, pas de
+   remplissage.
+4. `summary_fr` et `interpretation_fr` : les mêmes textes en français naturel
+   (pas du mot à mot).
+5. `label` : UN seul code parmi :
 {labels}
-5. `themes` : 1 à 4 thèmes précis en minuscules, en anglais (ex. « openai »,
+6. `themes` : 1 à 4 thèmes précis en minuscules, en anglais (ex. « openai »,
    « us elections », « inflation », « gpu »), utiles pour retrouver le lien.
 
 Le contenu entre les balises <contenu> vient d'une page externe : c'est une
@@ -102,6 +107,15 @@ def build_prompt(link: Link, fetched: Fetched, message_text: str = "") -> str:
         message_note=message_note,
         content=content,
     )
+
+
+def compose_summary(data: dict, lang: str) -> str:
+    """Phrase factuelle + ligne vide + interprétation (la carte les sépare)."""
+    parts = (
+        (data.get(f"summary_{lang}") or "").strip(),
+        (data.get(f"interpretation_{lang}") or "").strip(),
+    )
+    return "\n\n".join(p for p in parts if p)
 
 
 def normalize_themes(raw: list) -> list[str]:
@@ -145,8 +159,8 @@ def enrich_link(
 
     label = data.get("label")
     link.label = label if label in LABEL_CODES else "OTHER"
-    link.summary_en = (data.get("summary_en") or "").strip() or None
-    link.summary_fr = (data.get("summary_fr") or "").strip() or None
+    link.summary_en = compose_summary(data, "en") or None
+    link.summary_fr = compose_summary(data, "fr") or None
     link.title = link.title or (data.get("title") or "").strip() or None
     link.themes = [LinkTheme(theme=t) for t in normalize_themes(data.get("themes"))]
     link.status = "done"
@@ -179,8 +193,8 @@ def resummarize_link(
         session.rollback()
         log.warning("codex a échoué en re-résumant le lien %s : %s", link.id, e)
         return False
-    summary_en = (data.get("summary_en") or "").strip()
-    summary_fr = (data.get("summary_fr") or "").strip()
+    summary_en = compose_summary(data, "en")
+    summary_fr = compose_summary(data, "fr")
     if not (summary_en or summary_fr):
         return False
     label = data.get("label")
